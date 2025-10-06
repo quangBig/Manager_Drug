@@ -5,31 +5,31 @@ import type { Pool } from "mysql2/promise";
 export class ThuocService {
     constructor(@Inject('DATABASE_CONNECTION') private db: Pool) { }
 
-    // Lấy tất cả thuốc kèm tên nhóm và hãng
+    // 📌 Lấy tất cả thuốc kèm tên nhóm và hãng sản xuất
     async findAll() {
         const [rows] = await this.db.query(
             `SELECT t.*, 
-            nt.tenNhomThuoc, 
-            hsx.tenHangSanXuat
-     FROM Thuoc t
-     LEFT JOIN NhomThuoc nt ON t.maNhomThuoc = nt.maNhomThuoc
-     LEFT JOIN HangSanXuat hsx ON t.maHangSanXuat = hsx.maHangSanXuat
-     ORDER BY t.tenThuoc ASC`
+                    nt.tenNhomThuoc, 
+                    hsx.tenHangSanXuat
+             FROM Thuoc t
+             LEFT JOIN NhomThuoc nt ON t.maNhomThuoc = nt.maNhomThuoc
+             LEFT JOIN HangSanXuat hsx ON t.maHangSanXuat = hsx.maHangSanXuat
+             ORDER BY t.tenThuoc ASC`
         );
         return rows;
     }
 
-    // Lấy 1 thuốc theo ID (kèm thông tin nhóm và hãng)
-    async findOne(id: number) {
+    // 📌 Lấy 1 thuốc theo mã
+    async findOne(maThuoc: string) {
         const [rows] = await this.db.query(
             `SELECT t.*, 
-            nt.tenNhomThuoc, 
-            hsx.tenHangSanXuat
-     FROM Thuoc t
-     LEFT JOIN NhomThuoc nt ON t.maNhomThuoc = nt.maNhomThuoc
-     LEFT JOIN HangSanXuat hsx ON t.maHangSanXuat = hsx.maHangSanXuat
-     WHERE t.maThuoc = ?`,
-            [id],
+                    nt.tenNhomThuoc, 
+                    hsx.tenHangSanXuat
+             FROM Thuoc t
+             LEFT JOIN NhomThuoc nt ON t.maNhomThuoc = nt.maNhomThuoc
+             LEFT JOIN HangSanXuat hsx ON t.maHangSanXuat = hsx.maHangSanXuat
+             WHERE t.maThuoc = ?`,
+            [maThuoc],
         );
 
         if ((rows as any).length === 0) {
@@ -38,82 +38,84 @@ export class ThuocService {
         return (rows as any)[0];
     }
 
-
-    // Tạo thuốc mới, check tên trùng hoặc gần giống
-    async create(data: {
-        tenThuoc: string;
-        hoatChatChinh?: string;
-        maNhomThuoc: number;
-        maDonViTinh: string;
-        maHangSanXuat?: number;
-        giaNhap?: number;
-        giaBan?: number;
-        soLuongToiThieu?: number;
-        soLuongToiDa?: number;
-    }) {
+    // 📌 Tạo thuốc mới
+    async create(data: any) {
+        // 1️⃣ Kiểm tra trùng tên
         const [check] = await this.db.query(
             `SELECT COUNT(*) as cnt 
-       FROM Thuoc 
-       WHERE ? LIKE CONCAT("%", tenThuoc, "%") 
-          OR tenThuoc LIKE CONCAT("%", ?, "%")`,
-            [data.tenThuoc, data.tenThuoc],
+             FROM Thuoc 
+             WHERE tenThuoc = ?`,
+            [data.tenThuoc],
         );
-
         if ((check as any)[0].cnt > 0) {
-            throw new BadRequestException(
-                'Tên thuốc đã tồn tại hoặc gần giống, vui lòng nhập tên khác',
-            );
+            throw new BadRequestException('Tên thuốc đã tồn tại');
         }
 
-        const [result] = await this.db.query(
-            `INSERT INTO Thuoc 
-      (tenThuoc, hoatChatChinh, maNhomThuoc, maDonViTinh, maHangSanXuat, giaNhap, giaBan, soLuongToiThieu, soLuongToiDa)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        // 2️⃣ Sinh mã thuốc nếu chưa có
+        let maThuoc = data.maThuoc;
+        if (!maThuoc) {
+            const [maxRow] = await this.db.query(`SELECT MAX(maThuoc) as maxCode FROM Thuoc`);
+            const maxCode = (maxRow as any)[0].maxCode;
+            const nextNum = maxCode ? parseInt(maxCode.replace(/\D/g, '')) + 1 : 1;
+            maThuoc = 'T' + nextNum.toString().padStart(3, '0');
+        }
+
+        // 3️⃣ Insert đầy đủ trường
+        await this.db.query(
+            `INSERT INTO Thuoc (
+                maThuoc, tenThuoc, tenThuocGeneric, hoatChatChinh,
+                maNhomThuoc, maDonViTinh, maHangSanXuat,
+                nongDo, dangBaoChe, quyCach,
+                soLuongToiThieu, soLuongToiDa,
+                giaNhap, giaBan, tyLeLoiNhuan,
+                thuocKeDon, thuocGayNghien, thuocAntibiotic, duocBaoHiem, tyLeBaoHiem,
+                cachBaoQuan, cachSuDung, chiDinh, chongChiDinh, tacDungPhu, tuongTac,
+                ghiChu, ngayTao, nguoiTao, trangThai
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),'admin',1)`,
             [
+                maThuoc,
                 data.tenThuoc,
+                data.tenThuocGeneric ?? null,
                 data.hoatChatChinh ?? null,
                 data.maNhomThuoc,
                 data.maDonViTinh,
                 data.maHangSanXuat ?? null,
-                data.giaNhap ?? 0,
-                data.giaBan ?? 0,
+                data.nongDo ?? null,
+                data.dangBaoChe ?? null,
+                data.quyCach ?? null,
                 data.soLuongToiThieu ?? 0,
                 data.soLuongToiDa ?? 0,
-            ],
+                data.giaNhap ?? 0,
+                data.giaBan ?? 0,
+                data.tyLeLoiNhuan ?? 0,
+                data.thuocKeDon ?? 0,
+                data.thuocGayNghien ?? 0,
+                data.thuocAntibiotic ?? 0,
+                data.duocBaoHiem ?? 0,
+                data.tyLeBaoHiem ?? 0,
+                data.cachBaoQuan ?? null,
+                data.cachSuDung ?? null,
+                data.chiDinh ?? null,
+                data.chongChiDinh ?? null,
+                data.tacDungPhu ?? null,
+                data.tuongTac ?? null,
+                data.ghiChu ?? null,
+            ]
         );
 
-        return { insertId: (result as any).insertId };
+        return { maThuoc };
     }
 
-    // Cập nhật thuốc
-    async update(
-        id: number,
-        data: {
-            tenThuoc?: string;
-            hoatChatChinh?: string;
-            maNhomThuoc?: number;
-            maDonViTinh?: string;
-            maHangSanXuat?: number;
-            giaNhap?: number;
-            giaBan?: number;
-            soLuongToiThieu?: number;
-            soLuongToiDa?: number;
-        },
-    ) {
+    // 📌 Cập nhật thuốc
+    async update(maThuoc: string, data: any) {
+        // Nếu có đổi tên thì kiểm tra trùng
         if (data.tenThuoc) {
             const [check] = await this.db.query(
-                `SELECT COUNT(*) as cnt 
-         FROM Thuoc 
-         WHERE (? LIKE CONCAT("%", tenThuoc, "%") 
-               OR tenThuoc LIKE CONCAT("%", ?, "%"))
-           AND maThuoc != ?`,
-                [data.tenThuoc, data.tenThuoc, id],
+                `SELECT COUNT(*) as cnt FROM Thuoc WHERE tenThuoc = ? AND maThuoc != ?`,
+                [data.tenThuoc, maThuoc],
             );
-
             if ((check as any)[0].cnt > 0) {
-                throw new BadRequestException(
-                    'Tên thuốc đã tồn tại hoặc gần giống, vui lòng nhập tên khác',
-                );
+                throw new BadRequestException('Tên thuốc đã tồn tại');
             }
         }
 
@@ -127,16 +129,18 @@ export class ThuocService {
             }
         }
 
-        if (fields.length === 0) return { message: 'Không có trường nào để cập nhật' };
+        if (fields.length === 0) {
+            return { message: 'Không có trường nào để cập nhật' };
+        }
 
-        params.push(id);
+        params.push(maThuoc);
         await this.db.query(`UPDATE Thuoc SET ${fields.join(', ')} WHERE maThuoc = ?`, params);
         return { message: 'Cập nhật thuốc thành công' };
     }
 
-    // Xóa thuốc
-    async delete(id: number) {
-        await this.db.query('DELETE FROM Thuoc WHERE maThuoc = ?', [id]);
+    // 📌 Xóa thuốc
+    async delete(maThuoc: string) {
+        await this.db.query('DELETE FROM Thuoc WHERE maThuoc = ?', [maThuoc]);
         return { message: 'Xóa thuốc thành công' };
     }
 }

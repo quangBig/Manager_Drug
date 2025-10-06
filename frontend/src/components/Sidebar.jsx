@@ -18,7 +18,7 @@ export default function Sidebar() {
         { path: "/", label: "Dashboard", icon: <Home className="w-5 h-5" /> },
         { path: "/drugs", label: "Thuốc", icon: <Package className="w-5 h-5" /> },
         { path: "/drug-groups", label: "Nhóm thuốc", icon: <Layers className="w-5 h-5" /> }, // ✅ Thêm ở đây
-        { path: "/suppliers", label: "Nhà cung cấp", icon: <Truck className="w-5 h-5" /> },
+        { path: "/suppliers", label: "Hãng sản xuất", icon: <Truck className="w-5 h-5" /> },
         { path: "/warehouses", label: "Kho", icon: <Warehouse className="w-5 h-5" /> },
         { path: "/import", label: "Phiếu nhập", icon: <FileInput className="w-5 h-5" /> },
         { path: "/import-detail", label: "Chi tiết nhập", icon: <ClipboardList className="w-5 h-5" /> },

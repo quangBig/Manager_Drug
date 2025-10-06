@@ -3,30 +3,35 @@ import { ThuocService } from './thuoc.service';
 
 @Controller('thuoc')
 export class ThuocController {
-    constructor(private thuocService: ThuocService) { }
+    constructor(private readonly thuocService: ThuocService) { }
 
+    // 📌 Tạo thuốc mới
     @Post()
     create(@Body() data: any) {
         return this.thuocService.create(data);
     }
 
+    // 📌 Lấy danh sách tất cả thuốc
     @Get()
     findAll() {
         return this.thuocService.findAll();
     }
 
-    @Get(':id')
-    findOne(@Param('id') id: number) {
-        return this.thuocService.findOne(id);
+    // 📌 Lấy thông tin 1 thuốc theo mã
+    @Get(':maThuoc')
+    findOne(@Param('maThuoc') maThuoc: string) {
+        return this.thuocService.findOne(maThuoc);
     }
 
-    @Put(':id')
-    update(@Param('id') id: number, @Body() data: any) {
-        return this.thuocService.update(id, data);
+    // 📌 Cập nhật thuốc
+    @Put(':maThuoc')
+    update(@Param('maThuoc') maThuoc: string, @Body() data: any) {
+        return this.thuocService.update(maThuoc, data);
     }
 
-    @Delete(':id')
-    remove(@Param('id') id: number) {
-        return this.thuocService.delete(id);
+    // 📌 Xóa thuốc
+    @Delete(':maThuoc')
+    remove(@Param('maThuoc') maThuoc: string) {
+        return this.thuocService.delete(maThuoc);
     }
 }
